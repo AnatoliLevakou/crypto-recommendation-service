@@ -21,7 +21,7 @@ public class BatchProcessingSchedulerConfiguration {
     @Autowired
     private Job importCryptoRecordsJob;
 
-    @Scheduled(fixedRateString = "${import.job.scheduler.fixed-rate:60000}")
+    @Scheduled(fixedRateString = "${import.job.scheduler.fixed-rate:240000}")
     public void runImportJob() {
         final JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("uniqueness", System.nanoTime())
