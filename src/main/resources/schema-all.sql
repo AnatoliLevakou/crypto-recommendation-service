@@ -6,3 +6,12 @@ CREATE TABLE crypto  (
     symbol VARCHAR(20),
     price VARCHAR(30)
 );
+
+DROP TABLE configuration IF EXISTS;
+
+CREATE TABLE configuration  (
+    configuration_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(20),
+    description VARCHAR(500),
+    data VARCHAR(500)
+);

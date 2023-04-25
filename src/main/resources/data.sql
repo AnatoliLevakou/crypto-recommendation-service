@@ -1,0 +1,1 @@
+INSERT INTO configuration (name, description, data) VALUES ('NOT_SUPPORTED_CRYPTO', 'List of crypto that are not supported for now', 'ETH, XRP');

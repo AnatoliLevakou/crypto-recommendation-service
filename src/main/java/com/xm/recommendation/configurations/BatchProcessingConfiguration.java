@@ -1,15 +1,14 @@
 package com.xm.recommendation.configurations;
 
-import com.xm.recommendation.listeners.JobCompletionNotificationListener;
+import com.xm.recommendation.batch.CustomMultiResourcePartitioner;
 import com.xm.recommendation.models.CryptoRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.xm.recommendation.properties.ImportJobProperties;
+import com.xm.recommendation.repositories.ConfigurationRepository;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.core.partition.support.MultiResourcePartitioner;
 import org.springframework.batch.core.partition.support.Partitioner;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -39,39 +38,61 @@ import java.net.MalformedURLException;
 @Configuration
 @EnableScheduling
 public class BatchProcessingConfiguration {
-    private static final Logger LOGGER = LoggerFactory.getLogger(BatchProcessingConfiguration.class);
     private static final String IMPORT_JOB_NAME = "importCryptoRecordsJob";
+    private static final String IMPORT_JOB_READER_NAME = "cryptoRecordsReader";
+    private static final String IMPORT_JOB_MASTER_STEP_NAME = "importCryptoRecordsMasterStep";
+    private static final String IMPORT_JOB_PARTITIONER_STEP_NAME = "partitionerStep";
+    private static final String IMPORT_JOB_STEP_NAME = "importCryptoRecordsStep";
+    private static final String IMPORT_JOB_WRITER_INSERT_SQL = "INSERT INTO crypto (timestamp, symbol, price) VALUES (:timestamp, :symbol, :price)";
     private static final String[] TOKENS = { "timestamp", "symbol", "price" };
 
     @Autowired
     private JobRepository jobRepository;
     @Autowired
     private PlatformTransactionManager transactionManager;
+    @Autowired
+    private Partitioner partitioner;
+    @Autowired
+    private ConfigurationRepository configurationRepository;
+    @Autowired
+    private ImportJobProperties importJobProperties;
+
+    @Bean
+    public Job importCryptoRecordsJob(FlatFileItemReader<CryptoRecord> reader,
+                                      JdbcBatchItemWriter<CryptoRecord> writer) {
+        return new JobBuilder(IMPORT_JOB_NAME, jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .flow(importCryptoRecordsMasterStep(reader, writer))
+                .end()
+                .build();
+    }
 
     @Bean("partitioner")
     @StepScope
     public Partitioner partitioner() {
-        MultiResourcePartitioner partitioner = new MultiResourcePartitioner();
-        ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        final CustomMultiResourcePartitioner partitioner = new CustomMultiResourcePartitioner(configurationRepository);
+        final ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+
         Resource[] resources = null;
 
         try {
-            resources = resolver.getResources("prices/*.csv");
+            resources = resolver.getResources(this.importJobProperties.getFilePath());
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         partitioner.setResources(resources);
-        partitioner.partition(10);
+        partitioner.partition(1);
         return partitioner;
     }
 
     @Bean
     @StepScope
     @DependsOn("partitioner")
-    public FlatFileItemReader<CryptoRecord> reader(@Value("#{stepExecutionContext['fileName']}") final String filename) throws MalformedURLException {
+    public FlatFileItemReader<CryptoRecord> reader(@Value("#{stepExecutionContext['fileName']}") final String filename)
+            throws MalformedURLException {
         return new FlatFileItemReaderBuilder<CryptoRecord>()
-                .name("cryptoRecordsReader")
+                .name(IMPORT_JOB_READER_NAME)
                 .linesToSkip(1)
                 .delimited()
                 .names(TOKENS)
@@ -85,46 +106,38 @@ public class BatchProcessingConfiguration {
     @Bean
     public JdbcBatchItemWriter<CryptoRecord> writer(final DataSource dataSource) {
         return new JdbcBatchItemWriterBuilder<CryptoRecord>().itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-                .sql("INSERT INTO crypto (timestamp, symbol, price) VALUES (:timestamp, :symbol, :price)")
+                .sql(IMPORT_JOB_WRITER_INSERT_SQL)
                 .dataSource(dataSource)
                 .build();
     }
 
     @Bean
-    public Job importCryptoRecordsJob(FlatFileItemReader<CryptoRecord> reader, JdbcBatchItemWriter<CryptoRecord> writer, JobCompletionNotificationListener listener) {
-        return new JobBuilder(IMPORT_JOB_NAME, jobRepository)
-                .incrementer(new RunIdIncrementer())
-                .listener(listener)
-                .flow(importCryptoRecordsMasterStep(reader, writer))
-                .end()
-                .build();
-    }
-
-    @Bean
-    public ThreadPoolTaskExecutor taskExecutor() {
-        ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-        taskExecutor.setMaxPoolSize(10);
-        taskExecutor.setCorePoolSize(10);
-        taskExecutor.setQueueCapacity(10);
-        taskExecutor.afterPropertiesSet();
-        return taskExecutor;
-    }
-
-    @Bean
-    public Step importCryptoRecordsMasterStep(FlatFileItemReader<CryptoRecord> reader, JdbcBatchItemWriter<CryptoRecord> writer) {
-        return new StepBuilder("importCryptoRecordsMasterStep", jobRepository)
-                .partitioner("partitionerStep", partitioner())
+    public Step importCryptoRecordsMasterStep(final FlatFileItemReader<CryptoRecord> reader,
+                                              final JdbcBatchItemWriter<CryptoRecord> writer) {
+        return new StepBuilder(IMPORT_JOB_MASTER_STEP_NAME, jobRepository)
+                .partitioner(IMPORT_JOB_PARTITIONER_STEP_NAME, partitioner)
                 .step(importCryptoRecordsStep(reader, writer))
                 .taskExecutor(taskExecutor())
                 .build();
     }
 
     @Bean
-    public Step importCryptoRecordsStep(FlatFileItemReader<CryptoRecord> reader, JdbcBatchItemWriter<CryptoRecord> writer) {
-        return new StepBuilder("importCryptoRecordsStep", jobRepository)
-                .<CryptoRecord, CryptoRecord> chunk(10, transactionManager)
+    public Step importCryptoRecordsStep(final FlatFileItemReader<CryptoRecord> reader,
+                                        final JdbcBatchItemWriter<CryptoRecord> writer) {
+        return new StepBuilder(IMPORT_JOB_STEP_NAME, jobRepository)
+                .<CryptoRecord, CryptoRecord> chunk(this.importJobProperties.getChunkSize(), transactionManager)
                 .writer(writer)
                 .reader(reader)
                 .build();
+    }
+
+    @Bean
+    public ThreadPoolTaskExecutor taskExecutor() {
+        final ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+        taskExecutor.setMaxPoolSize(this.importJobProperties.getMaxPoolSize());
+        taskExecutor.setCorePoolSize(this.importJobProperties.getCorePoolSize());
+        taskExecutor.setQueueCapacity(this.importJobProperties.getQueueCapacity());
+        taskExecutor.afterPropertiesSet();
+        return taskExecutor;
     }
 }
