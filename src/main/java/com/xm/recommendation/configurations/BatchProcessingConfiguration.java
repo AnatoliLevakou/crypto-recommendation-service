@@ -1,5 +1,6 @@
 package com.xm.recommendation.configurations;
 
+import com.xm.recommendation.batch.CryptoRecordMapper;
 import com.xm.recommendation.batch.CustomMultiResourcePartitioner;
 import com.xm.recommendation.models.CryptoRecord;
 import com.xm.recommendation.properties.ImportJobProperties;
@@ -16,8 +17,11 @@ import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourc
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
+import org.springframework.batch.item.file.mapping.DefaultLineMapper;
+import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -91,14 +95,16 @@ public class BatchProcessingConfiguration {
     @DependsOn("partitioner")
     public FlatFileItemReader<CryptoRecord> reader(@Value("#{stepExecutionContext['fileName']}") final String filename)
             throws MalformedURLException {
+        LineMapper<CryptoRecord> lineMapper = importingLineMapper(null);
         return new FlatFileItemReaderBuilder<CryptoRecord>()
                 .name(IMPORT_JOB_READER_NAME)
                 .linesToSkip(1)
                 .delimited()
                 .names(TOKENS)
-                .fieldSetMapper(new BeanWrapperFieldSetMapper<>() {{
-                    setTargetType(CryptoRecord.class);
-                }})
+                .lineMapper(lineMapper)
+//                .fieldSetMapper(new BeanWrapperFieldSetMapper<>() {{
+//                    setTargetType(CryptoRecord.class);
+//                }})
                 .resource(new UrlResource(filename))
                 .build();
     }
@@ -139,5 +145,14 @@ public class BatchProcessingConfiguration {
         taskExecutor.setQueueCapacity(this.importJobProperties.getQueueCapacity());
         taskExecutor.afterPropertiesSet();
         return taskExecutor;
+    }
+
+    @Bean
+    public LineMapper<CryptoRecord> importingLineMapper(CryptoRecordMapper mapper) {
+        DefaultLineMapper<CryptoRecord> lineMapper = new DefaultLineMapper<>();
+        lineMapper.setLineTokenizer(new DelimitedLineTokenizer());
+        lineMapper.setFieldSetMapper(mapper);
+
+        return lineMapper;
     }
 }

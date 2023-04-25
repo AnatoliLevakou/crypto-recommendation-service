@@ -1,26 +1,27 @@
 package com.xm.recommendation.models;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 public class CryptoRecord {
-    private Long timestamp;
+    private LocalDateTime timestamp;
     private String symbol;
     private BigDecimal price;
 
     public CryptoRecord() {
     }
 
-    public CryptoRecord(Long timestamp, String symbol, BigDecimal price) {
+    public CryptoRecord(LocalDateTime timestamp, String symbol, BigDecimal price) {
         this.timestamp = timestamp;
         this.symbol = symbol;
         this.price = price;
     }
 
-    public Long getTimestamp() {
+    public LocalDateTime getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Long timestamp) {
+    public void setTimestamp(LocalDateTime timestamp) {
         this.timestamp = timestamp;
     }
 
