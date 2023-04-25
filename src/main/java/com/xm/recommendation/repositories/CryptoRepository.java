@@ -5,9 +5,28 @@ import com.xm.recommendation.models.CryptoRecordDao;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 
+import java.time.LocalDate;
+import java.util.List;
+
 public interface CryptoRepository extends CrudRepository<CryptoEntity, Long> {
 
     boolean existsBySymbol(String symbol);
+
+    @Query(nativeQuery = true, value = "SELECT *, (maxPrice - minPrice) / minPrice AS normRange\n" +
+            "FROM (SELECT DISTINCT (symbol),\n" +
+            "yearMonth,\n" +
+            "first_value(price) over (PARTITION BY SYMBOL,yearMonth ORDER BY yearMonth DESC) as oldestPrice,\n" +
+            "last_value(price) over (PARTITION BY SYMBOL,yearMonth ORDER BY yearMonth DESC) as newestPrice,\n" +
+            "min(price) OVER (PARTITION BY SYMBOL,yearMonth ORDER BY yearMonth DESC) AS minPrice,\n" +
+            "max(price) OVER (PARTITION BY SYMBOL,yearMonth ORDER BY yearMonth DESC) AS maxPrice\n" +
+            "FROM (SELECT symbol,\n" +
+            "price,\n" +
+            "timestamp,\n" +
+            "FORMATDATETIME(timestamp, 'yyMM') as yearMonth\n" +
+            "FROM CRYPTO) withYearMonth\n" +
+            "ORDER BY yearMonth DESC) partitioned\n" +
+            "ORDER BY normRange DESC;")
+    List<CryptoRecordDao> findNormalizedData();
 
     @Query(nativeQuery = true, value = "SELECT *, (maxPrice - minPrice) / minPrice AS normRange\n" +
             "FROM (SELECT DISTINCT (symbol),\n" +
@@ -24,4 +43,21 @@ public interface CryptoRepository extends CrudRepository<CryptoEntity, Long> {
             "WHERE SYMBOL = :symbol) withYearMonth) partitioned\n" +
             "ORDER BY normRange DESC")
     CryptoRecordDao findDataForSymbol(String symbol);
+
+    @Query(nativeQuery = true, value = "SELECT *, (maxPrice - minPrice) / minPrice AS normRange\n" +
+            "FROM (SELECT DISTINCT (symbol),\n" +
+            "valueDate,\n" +
+            "first_value(price) over (PARTITION BY SYMBOL,valueDate ORDER BY valueDate DESC) as oldestPrice,\n" +
+            "last_value(price) over (PARTITION BY SYMBOL,valueDate ORDER BY valueDate DESC) as newestPrice,\n" +
+            "min(price) OVER (PARTITION BY SYMBOL,valueDate ORDER BY valueDate DESC) AS minPrice,\n" +
+            "max(price) OVER (PARTITION BY SYMBOL,valueDate ORDER BY valueDate DESC) AS maxPrice\n" +
+            "FROM (SELECT symbol,\n" +
+            "price,\n" +
+            "timestamp,\n" +
+            "FORMATDATETIME(timestamp, 'yyMMdd') as valueDate\n" +
+            "FROM CRYPTO) withYearMonth\n" +
+            "WHERE valueDate = :date) partitioned\n" +
+            "ORDER BY normRange DESC\n" +
+            "LIMIT 1;")
+    CryptoRecordDao findBestCryptoForDate(String date);
 }

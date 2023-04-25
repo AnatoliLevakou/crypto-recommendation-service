@@ -8,6 +8,7 @@ public class CryptoRecordDto {
     private BigDecimal newestPrice;
     private BigDecimal minPrice;
     private BigDecimal maxPrice;
+    private BigDecimal normRange;
 
     public String getSymbol() {
         return symbol;
@@ -47,5 +48,13 @@ public class CryptoRecordDto {
 
     public void setMaxPrice(BigDecimal maxPrice) {
         this.maxPrice = maxPrice;
+    }
+
+    public BigDecimal getNormRange() {
+        return normRange;
+    }
+
+    public void setNormRange(BigDecimal normRange) {
+        this.normRange = normRange;
     }
 }
