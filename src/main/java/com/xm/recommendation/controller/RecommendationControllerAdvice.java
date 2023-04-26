@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class RecommendationControllerAdvice {
     @ExceptionHandler(CryptoNotExistException.class)
-    public ProblemDetail handleCurrencyDoesntExistsException(Exception e) {
+    public ProblemDetail handleCryptoNotExistsException(Exception e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 }

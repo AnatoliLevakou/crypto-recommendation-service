@@ -18,6 +18,13 @@ public class RecommendationService {
     @Autowired
     private CryptoRepository cryptoRepository;
 
+    public RecommendationService() {
+    }
+
+    public RecommendationService(CryptoRepository cryptoRepository) {
+        this.cryptoRepository = cryptoRepository;
+    }
+
     public List<CryptoRecordDto> getCryptosInfo() {
         final List<CryptoRecordDao> daos = this.cryptoRepository.findNormalizedData();
 
