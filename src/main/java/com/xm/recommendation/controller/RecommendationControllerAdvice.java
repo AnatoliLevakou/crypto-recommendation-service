@@ -6,6 +6,9 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+/**
+ * Controller advice to properly handle thrown custom exception
+ */
 @RestControllerAdvice
 public class RecommendationControllerAdvice {
     @ExceptionHandler(CryptoNotExistException.class)

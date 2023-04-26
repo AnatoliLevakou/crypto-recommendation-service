@@ -11,6 +11,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.LocalDateTime;
 
+/**
+ * Batch processing scheduler for periodically invoking import data job.
+ */
 @Configuration
 @EnableScheduling
 public class BatchProcessingSchedulerConfiguration {
@@ -21,6 +24,10 @@ public class BatchProcessingSchedulerConfiguration {
     @Autowired
     private Job importCryptoRecordsJob;
 
+    /**
+     * Main scheduled method for job invocation.
+     * To be able to restart job 'uniqueness' parameter added to each job execution.
+     */
     @Scheduled(fixedRateString = "${import.job.scheduler.fixed-rate:240000}")
     public void runImportJob() {
         final JobParameters jobParameters = new JobParametersBuilder()

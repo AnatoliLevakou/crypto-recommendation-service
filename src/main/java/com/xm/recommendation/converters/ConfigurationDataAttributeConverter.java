@@ -7,6 +7,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Provides ability to split comma separated value from data db column
+ */
 @Converter
 public class ConfigurationDataAttributeConverter implements AttributeConverter<List<String>, String> {
     private static final String SEPARATOR = ",";

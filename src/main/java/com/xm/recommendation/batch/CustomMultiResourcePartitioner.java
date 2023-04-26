@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Custom partitioner implements additional logic for filtering restricted files.
+ */
 public class CustomMultiResourcePartitioner extends MultiResourcePartitioner {
     private static final Logger LOGGER = LoggerFactory.getLogger(CustomMultiResourcePartitioner.class);
     private static final String SYMBOL_PATTERN = "^([^_]+)_";
@@ -29,6 +32,12 @@ public class CustomMultiResourcePartitioner extends MultiResourcePartitioner {
         super.setResources(this.filterResources(resources));
     }
 
+    /**
+     * Based on configuration from DB decides if provided resource will be imported or not
+     *
+     * @param resources List of resources available in provided path.
+     * @return Filtered resource array
+     */
     private Resource[] filterResources(Resource[] resources) {
         final ConfigurationEntity configuration = this.configurationRepository.findByName(EXCLUSION_CONFIGURATION_KEY);
         final List<Resource> result = new ArrayList<>();
