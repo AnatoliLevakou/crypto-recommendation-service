@@ -19,7 +19,6 @@ import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilde
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.mapping.BeanWrapperFieldSetMapper;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +38,12 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
+/**
+ * Batch import configuration.
+ * Implementation for partitioning batch processing.
+ * Custom multi file partitioner @CustomMultiResourcePartitioner implemented to achieve ability for
+ * filtering restricted files.
+ */
 @Configuration
 @EnableScheduling
 public class BatchProcessingConfiguration {
@@ -102,9 +107,6 @@ public class BatchProcessingConfiguration {
                 .delimited()
                 .names(TOKENS)
                 .lineMapper(lineMapper)
-//                .fieldSetMapper(new BeanWrapperFieldSetMapper<>() {{
-//                    setTargetType(CryptoRecord.class);
-//                }})
                 .resource(new UrlResource(filename))
                 .build();
     }

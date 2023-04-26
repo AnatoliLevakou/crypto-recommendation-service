@@ -10,6 +10,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 
+/**
+ * Custom line mapper to convert date.
+ */
 @Component
 public class CryptoRecordMapper  implements FieldSetMapper<CryptoRecord> {
     private static final int TIMESTAMP_COLUMN_INDEX = 0;
